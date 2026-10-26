@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>⚠️</title>
+<style>
+  :root{
+    --bg:#060a06;
+    --fg:#38ff6b;
+    --fg-dim:#1e7a3a;
+    --red:#ff3b3b;
+    --amber:#ffb020;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family: ui-monospace, "SF Mono", "Courier New", monospace;
+    overflow:hidden;
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  #scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.25) 3px
+    );
+    mix-blend-mode: multiply;
+    opacity:.5;
+  }
+  #flicker{
+    position:fixed; inset:0; pointer-events:none; z-index:4;
+    background: rgba(56,255,107,0.02);
+    animation: flick 150ms infinite;
+  }
+  @keyframes flick{
+    0%{opacity:.3;} 50%{opacity:.6;} 100%{opacity:.3;}
+  }
+  #wrap{
+    position:relative; z-index:2;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    padding: 18px 16px;
+  }
+  #log{
+    flex:1;
+    overflow:hidden;
+    font-size: 13px;
+    line-height:1.55;
+    white-space:pre-wrap;
+    word-break: break-word;
+  }
+  #log .ok{color:var(--fg-dim);}
+  #log .warn{color:var(--amber);}
+  #log .bad{color:var(--red); font-weight:bold;}
+  .cursor{
+    display:inline-block;
+    width:8px; height:14px;
+    background:var(--fg);
+    vertical-align: -2px;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
+
+  #alertBox{
+    display:none;
+    border:2px solid var(--red);
+    background: rgba(255,59,59,0.08);
+    padding:16px;
+    margin-top:12px;
+    text-align:center;
+    animation: shake 0.4s ease-in-out;
+  }
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-6px);}
+    40%{transform:translateX(6px);}
+    60%{transform:translateX(-4px);}
+    80%{transform:translateX(4px);}
+  }
+  #alertBox h1{
+    margin:0 0 6px;
+    font-size:18px;
+    color:var(--red);
+    letter-spacing:1px;
+  }
+  #alertBox p{
+    margin:4px 0;
+    font-size:14px;
+    color:#eee;
+  }
+  #alertBox .name{
+    color:var(--fg);
+    font-weight:bold;
+  }
+  #alertBox .culprit{
+    color:var(--red);
+    font-weight:bold;
+  }
+
+  #btnRow{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+  }
+  button{
+    flex:1;
+    font-family:inherit;
+    font-size:14px;
+    padding:12px 10px;
+    border-radius:6px;
+    border:1px solid var(--fg-dim);
+    background:transparent;
+    color:var(--fg);
+  }
+  button:active{
+    background: rgba(56,255,107,0.15);
+  }
+  #exitBtn{
+    display:none;
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  #prankReveal{
+    display:none;
+    text-align:center;
+    padding: 24px 12px;
+  }
+  #prankReveal h2{
+    color:var(--fg);
+    font-size:20px;
+    margin-bottom:8px;
+  }
+  #prankReveal p{
+    color:#9fe6b3;
+    font-size:14px;
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div id="scanlines"></div>
+<div id="flicker"></div>
+
+<div id="wrap">
+  <div id="log"><span id="logText"></span><span class="cursor"></span></div>
+
+  <div id="alertBox">
+    <h1>تحذير أمني</h1>
+    <p>الجهاز المسجل باسم <span class="name">يوساب رفعت</span></p>
+    <p>تم اختراقه بواسطة <span class="culprit">كيرلس أيمن</span></p>
+    <p style="color:#9fe6b3; font-size:12px; margin-top:10px;">هذا مقلب ولا يوجد اختراق حقيقي 😂</p>
+  </div>
+
+  <div id="prankReveal">
+    <h2>😂 مقلب!</h2>
+    <p>محصلش أي اختراق ولا أي تصوير.<br>دي مجرد صفحة هزار بين الأصحاب.</p>
+  </div>
+
+  <div id="btnRow">
+    <button id="exitBtn">خروج</button>
+  </div>
+</div>
+
+<script>
+const lines = [
+  {t:"booting security daemon...", c:"ok"},
+  {t:"scanning device fingerprint...", c:"ok"},
+  {t:"checking open ports: 22, 443, 8080...", c:"ok"},
+  {t:"[OK] connection established", c:"ok"},
+  {t:"bypassing lock screen protocol...", c:"warn"},
+  {t:"decrypting local storage...", c:"warn"},
+  {t:"accessing contacts.db [DENIED -> RETRY]", c:"warn"},
+  {t:"accessing contacts.db [OK]", c:"ok"},
+  {t:"uploading snapshot... 42%", c:"warn"},
+  {t:"uploading snapshot... 87%", c:"warn"},
+  {t:"uploading snapshot... 100%", c:"warn"},
+  {t:"[!] root access granted", c:"bad"},
+  {t:"[!] device compromised", c:"bad"},
+];
+
+const logText = document.getElementById('logText');
+const alertBox = document.getElementById('alertBox');
+const exitBtn = document.getElementById('exitBtn');
+const prankReveal = document.getElementById('prankReveal');
+const wrap = document.getElementById('wrap');
+const logDiv = document.getElementById('log');
+
+let i = 0;
+
+function typeLine(line, cb){
+  const span = document.createElement('div');
+  span.className = line.c;
+  logText.parentElement.insertBefore(span, logText);
+  let j = 0;
+  const iv = setInterval(()=>{
+    span.textContent = line.t.slice(0, j+1);
+    j++;
+    logDiv.scrollTop = logDiv.scrollHeight;
+    if(j >= line.t.length){
+      clearInterval(iv);
+      setTimeout(cb, 120 + Math.random()*180);
+    }
+  }, 18 + Math.random()*20);
+}
+
+function next(){
+  if(i < lines.length){
+    typeLine(lines[i], ()=>{ i++; next(); });
+  } else {
+    setTimeout(showAlert, 400);
+  }
+}
+
+function showAlert(){
+  alertBox.style.display = 'block';
+  exitBtn.style.display = 'block';
+  if(navigator.vibrate){
+    try{ navigator.vibrate([80,40,80,40,160]); }catch(e){}
+  }
+}
+
+exitBtn.addEventListener('click', ()=>{
+  alertBox.style.display = 'none';
+  exitBtn.style.display = 'none';
+  logDiv.style.display = 'none';
+  prankReveal.style.display = 'block';
+});
+
+next();
+</script>
+</body>
+</html>
